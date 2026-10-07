@@ -1,0 +1,19 @@
+H5 Viewer third-party software notices
+======================================
+
+The Windows distribution contains the Python interpreter and third-party Python
+packages. Full license texts copied from the installed distributions are in the
+licenses directory beside this file.
+
+Python                         Python Software Foundation License
+NumPy                          BSD 3-Clause License
+h5py                           BSD 3-Clause License
+HDF5                           HDF5 License (BSD-style)
+LZF filter bundled by h5py     BSD 2-Clause License
+zlib/DEFLATE support           zlib License
+PySide6 / Shiboken6 / Qt       LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
+pyqtgraph                      MIT License
+PyInstaller runtime            GPL-2.0-or-later with Bootloader Exception
+
+H5 Viewer is distributed independently of these projects. Project names and
+licenses are provided for attribution and do not imply endorsement.

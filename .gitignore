@@ -1,0 +1,14 @@
+.venv/
+.venv-windows/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+artifacts/
+*.egg-info/
+.env
+*.h5
+*.hdf5
+*.raw
