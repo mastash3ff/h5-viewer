@@ -27,6 +27,9 @@ def test_installer_is_per_user_and_does_not_hijack_defaults() -> None:
     assert r"Software\Classes\.hdf5\OpenWithProgids" in ISS
     assert r"Software\RegisteredApplications" in ISS
     assert r'ValueData: """{app}\{#MyAppExeName}"" ""%1"""' in ISS
+    for line in ISS.splitlines():
+        if "OpenWithProgids" in line or "SupportedTypes" in line:
+            assert "ValueType: string" in line and 'ValueData: ""' in line
 
 
 def test_installer_uninstall_only_deletes_owned_or_named_registration() -> None:

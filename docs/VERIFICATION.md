@@ -50,15 +50,35 @@ H5Viewer-0.1.0-windows-x64-portable.zip
 814291a0d1a4f2479ffa38820ed03b76104b22544afd28dfcb8ab787717af6c2
 
 H5Viewer-0.1.0-windows-x64-setup.exe
-33021f2d6b4e88f7e47e1b15ba96d392c5444f42719141486073a218c29f60aa
+5dc92416df16faf9b636ed95268ae32f90bdb0ddeaab52bac0daea5a23df27c1
 ```
 
-## Installation boundary
+## Installed application
 
-Installer compilation and portable execution do not establish installed Explorer
-integration. Installation, default-app selection, double-click, upgrade, and
-uninstall checks require the separate release approval recorded in the workspace
-working agreement. These checks have not been performed.
+After the user's explicit release approval, the per-user installer completed with
+exit code 0 at `%LOCALAPPDATA%\Programs\H5Viewer`. The installed executable matched
+the staged executable and passed its diagnostic: five dataset reads, Windows Qt,
+and enforced memory limits.
+
+Live registry inspection exposed an installer defect: Inno Setup's `ValueType:
+none` created keys but omitted named Open With and SupportedTypes values. All
+four entries were corrected to empty strings. Focused packaging tests and
+independent review passed. The corrected installer upgraded the installation in
+place successfully (exit code 0). Live inspection confirmed RegisteredApplications,
+capabilities, both OpenWithProgids values, both SupportedTypes values, and correctly
+quoted executable/file arguments.
+
+Normal Windows Settings showed H5 Viewer for both extensions. UI selection set
+`.h5`'s UserChoice to `H5Viewer.h5`; `.hdf5` resolved effectively to `H5Viewer.hdf5`
+without a UserChoice override. Protected registry values were not written directly.
+`AssocQueryString` resolved both types to the installed executable.
+
+Windows ShellExecute opened both spaced-name `.h5` and `.hdf5` fixtures in the
+installed application. Process arguments, matching window titles, and the displayed
+root's five datasets were verified through Windows UI Automation. This exercises
+the normal shell association used by Explorer. A physical Explorer double-click
+automation attempt did not activate the file, so literal mouse double-click
+completion is not claimed. Uninstall testing has not been performed.
 
 ## Known scope limits
 

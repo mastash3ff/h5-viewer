@@ -59,19 +59,19 @@ Root: HKCU; Subkey: "Software\H5Viewer\Capabilities\FileAssociations"; ValueType
 Root: HKCU; Subkey: "Software\H5Viewer\Capabilities\FileAssociations"; ValueType: string; ValueName: ".hdf5"; ValueData: "H5Viewer.hdf5"
 
 Root: HKCU; Subkey: "Software\Classes\Applications\{#MyAppExeName}"; ValueType: string; ValueName: "FriendlyAppName"; ValueData: "H5 Viewer"; Flags: uninsdeletekey
-Root: HKCU; Subkey: "Software\Classes\Applications\{#MyAppExeName}\SupportedTypes"; ValueType: none; ValueName: ".h5"
-Root: HKCU; Subkey: "Software\Classes\Applications\{#MyAppExeName}\SupportedTypes"; ValueType: none; ValueName: ".hdf5"
+Root: HKCU; Subkey: "Software\Classes\Applications\{#MyAppExeName}\SupportedTypes"; ValueType: string; ValueName: ".h5"; ValueData: ""
+Root: HKCU; Subkey: "Software\Classes\Applications\{#MyAppExeName}\SupportedTypes"; ValueType: string; ValueName: ".hdf5"; ValueData: ""
 Root: HKCU; Subkey: "Software\Classes\Applications\{#MyAppExeName}\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""
 
 Root: HKCU; Subkey: "Software\Classes\H5Viewer.h5"; ValueType: string; ValueName: ""; ValueData: "HDF5 file"; Flags: uninsdeletekey
 Root: HKCU; Subkey: "Software\Classes\H5Viewer.h5\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"",0"
 Root: HKCU; Subkey: "Software\Classes\H5Viewer.h5\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""
-Root: HKCU; Subkey: "Software\Classes\.h5\OpenWithProgids"; ValueType: none; ValueName: "H5Viewer.h5"; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "Software\Classes\.h5\OpenWithProgids"; ValueType: string; ValueName: "H5Viewer.h5"; ValueData: ""; Flags: uninsdeletevalue
 
 Root: HKCU; Subkey: "Software\Classes\H5Viewer.hdf5"; ValueType: string; ValueName: ""; ValueData: "HDF5 file"; Flags: uninsdeletekey
 Root: HKCU; Subkey: "Software\Classes\H5Viewer.hdf5\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"",0"
 Root: HKCU; Subkey: "Software\Classes\H5Viewer.hdf5\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""
-Root: HKCU; Subkey: "Software\Classes\.hdf5\OpenWithProgids"; ValueType: none; ValueName: "H5Viewer.hdf5"; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "Software\Classes\.hdf5\OpenWithProgids"; ValueType: string; ValueName: "H5Viewer.hdf5"; ValueData: ""; Flags: uninsdeletevalue
 
 [Run]
 Filename: "ms-settings:defaultapps"; Description: "Choose default apps in Windows Settings"; Flags: postinstall skipifsilent unchecked nowait shellexec
