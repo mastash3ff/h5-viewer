@@ -2,6 +2,7 @@
 param(
     [string]$SourceRoot,
     [string]$BuildRoot = (Join-Path $env:LOCALAPPDATA "H5ViewerBuild"),
+    [string]$OutputRoot,
     [switch]$SkipInstaller
 )
 
@@ -46,94 +47,72 @@ function Invoke-Checked {
     }
 }
 
-$source = (Resolve-Path $SourceRoot).Path
-foreach ($required in @("pyproject.toml", "uv.lock", "packaging\h5_viewer.spec", "packaging\h5_viewer.iss")) {
-    if (-not (Test-Path (Join-Path $source $required))) { throw "Missing required source file: $required" }
+$source = (Resolve-Path $SourceRoot).ProviderPath
+$selected = @("pyproject.toml", "uv.lock", "README.md", "LICENSE", "SECURITY.md", "CONTRIBUTING.md", "src", "packaging", "scripts", "docs")
+foreach ($required in $selected) {
+    if (-not (Test-Path (Join-Path $source $required))) { throw "Missing required source: $required" }
 }
-
+$gitSource = $source.Replace("\", "/")
+$commitOutput = & git -c "safe.directory=$gitSource" -C $source rev-parse HEAD
+if ($LASTEXITCODE -ne 0) { throw "Cannot determine source Git commit." }
+$commit = $commitOutput.Trim()
+$dirty = [bool](& git -c "safe.directory=$gitSource" -C $source status --porcelain)
+if ($LASTEXITCODE -ne 0) { throw "Cannot determine source Git status." }
 $uv = Find-Uv
 $iscc = if ($SkipInstaller) { $null } else { Find-Iscc }
 $stage = Join-Path $BuildRoot "source"
 $stageDist = Join-Path $stage "dist"
-$output = Join-Path $source "dist"
+$output = if ($OutputRoot) { [IO.Path]::GetFullPath($OutputRoot) } else { Join-Path $source "dist\release" }
+$cache = Join-Path $source "artifacts\source-cache"
 
+# Only task-owned staging and dedicated release output may be replaced.
+if ([IO.Path]::GetFullPath($stage).TrimEnd('\') -eq $source.TrimEnd('\')) { throw "Build staging overlaps source." }
 if (Test-Path $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
+if (Test-Path $output) {
+    if (@(Get-ChildItem -LiteralPath $output -Force).Count -gt 0) {
+        throw "Release output must be empty; choose a new -OutputRoot or archive its previous contents."
+    }
+}
 New-Item -ItemType Directory -Path $stage, $output -Force | Out-Null
-
-$excludeNames = @(".git", ".venv", ".venv-windows", "build", "dist", "artifacts", "__pycache__", ".pytest_cache", ".ruff_cache")
-Get-ChildItem -LiteralPath $source -Force |
-    Where-Object { $_.Name -notin $excludeNames } |
-    Copy-Item -Destination $stage -Recurse -Force
+if (-not $dirty) {
+    # Read immutable committed bytes: neither ignored descendants nor edits made
+    # during the build can enter a release carrying this commit SHA.
+    $sourceArchive = Join-Path $BuildRoot "selected-source.zip"
+    Invoke-Checked "git" (@("-c", "safe.directory=$gitSource", "-C", $source, "archive", "--format=zip", "--output=$sourceArchive", $commit, "--") + $selected)
+    Expand-Archive -LiteralPath $sourceArchive -DestinationPath $stage
+    Remove-Item -LiteralPath $sourceArchive
+}
+else {
+    # Development builds may include reviewed worktree files, but never ignored
+    # descendants. The manifest records dirty=true and publication rejects it.
+    $paths = & git -c "safe.directory=$gitSource" -C $source ls-files --cached --others --exclude-standard -- $selected
+    if ($LASTEXITCODE -ne 0) { throw "Cannot enumerate development source files." }
+    foreach ($relative in $paths) {
+        $from = Join-Path $source $relative
+        if (-not (Test-Path -LiteralPath $from -PathType Leaf)) { continue }
+        $to = Join-Path $stage $relative
+        New-Item -ItemType Directory -Path (Split-Path -Parent $to) -Force | Out-Null
+        Copy-Item -LiteralPath $from -Destination $to -Force
+    }
+}
 
 Push-Location $stage
 try {
-    Invoke-Checked $uv @("sync", "--frozen", "--group", "dev", "--python", "3.13")
-    Invoke-Checked $uv @("run", "--frozen", "pyinstaller", "--noconfirm", "--clean", "packaging\h5_viewer.spec")
-
+    Invoke-Checked $uv @("sync", "--locked", "--group", "dev", "--python", "3.13")
+    Invoke-Checked $uv @("run", "--locked", "pyinstaller", "--noconfirm", "--clean", "packaging\h5_viewer.spec")
     $portable = Join-Path $stageDist "H5Viewer"
     if (-not (Test-Path (Join-Path $portable "H5Viewer.exe"))) { throw "PyInstaller did not produce H5Viewer.exe." }
-
-    Copy-Item "packaging\THIRD_PARTY_NOTICES.txt" $portable -Force
-    Copy-Item "README.md" $portable -Force
-    Copy-Item "docs\USER_GUIDE.md" $portable -Force
-    $licenseRoot = Join-Path $portable "licenses"
-    New-Item -ItemType Directory -Path $licenseRoot -Force | Out-Null
-    Copy-Item "packaging\licenses\*" $licenseRoot -Force
-    $licenseScript = @'
-from importlib import metadata
-from pathlib import Path
-import shutil
-import sys
-
-destination = Path(sys.argv[1])
-packages = ("numpy", "h5py", "PySide6", "shiboken6", "pyqtgraph", "pyinstaller")
-for name in packages:
-    dist = metadata.distribution(name)
-    package_dir = destination / name
-    package_dir.mkdir(parents=True, exist_ok=True)
-    matches = []
-    for entry in dist.files or ():
-        basename = Path(str(entry)).name.lower()
-        if basename.startswith(("license", "copying", "notice")):
-            source = Path(dist.locate_file(entry))
-            if source.is_file():
-                matches.append(source)
-    if not matches:
-        raise SystemExit(f"No license file found for {name}")
-    for index, source in enumerate(dict.fromkeys(matches), start=1):
-        suffix = source.suffix or ".txt"
-        shutil.copy2(source, package_dir / f"LICENSE-{index}{suffix}")
-
-python_license = Path(sys.base_prefix) / "LICENSE.txt"
-if not python_license.is_file():
-    raise SystemExit(f"Python license not found: {python_license}")
-shutil.copy2(python_license, destination / "PYTHON-LICENSE.txt")
-'@
-    $licenseScript | & $uv run --frozen python - $licenseRoot
-    if ($LASTEXITCODE -ne 0) { throw "License collection failed with exit code $LASTEXITCODE." }
-
-    $portableZip = Join-Path $stageDist "H5Viewer-$((Select-String '^version = ' pyproject.toml).Line.Split('"')[1])-windows-x64-portable.zip"
-    if (Test-Path $portableZip) { Remove-Item -LiteralPath $portableZip -Force }
+    Invoke-Checked $uv @("run", "--locked", "python", "scripts\package_licenses.py", "prepare", "--portable", $portable, "--release", $output, "--cache", $cache)
+    $version = (& $uv run --locked python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])").Trim()
+    if ($LASTEXITCODE -ne 0) { throw "Cannot determine project version." }
+    $portableZip = Join-Path $output "H5Viewer-$version-windows-x64-portable.zip"
     Compress-Archive -Path (Join-Path $portable "*") -DestinationPath $portableZip -CompressionLevel Optimal
-
-    $version = (Select-String '^version = ' pyproject.toml).Line.Split('"')[1]
     if (-not $SkipInstaller) {
-        Invoke-Checked $iscc @(
-            "/DMyAppVersion=$version",
-            "/DSourceDir=$portable",
-            "/DOutputDir=$stageDist",
-            "packaging\h5_viewer.iss"
-        )
+        Invoke-Checked $iscc @("/DMyAppVersion=$version", "/DSourceDir=$portable", "/DOutputDir=$output", "packaging\h5_viewer.iss")
     }
-
-    Copy-Item $portableZip $output -Force
-    if (-not $SkipInstaller) {
-        Copy-Item (Join-Path $stageDist "H5Viewer-$version-windows-x64-setup.exe") $output -Force
-    }
-
-    Get-FileHash (Join-Path $output "H5Viewer-$version-windows-x64-*") -Algorithm SHA256 |
-        Select-Object Path, Hash
+    $finalize = @("run", "--locked", "python", "scripts\package_licenses.py", "finalize", "--release", $output, "--version", $version, "--commit", $commit)
+    if ($dirty) { $finalize += "--dirty" }
+    Invoke-Checked $uv $finalize
+    Get-Content (Join-Path $output "SHA256SUMS.txt")
 }
-finally {
-    Pop-Location
-}
+finally { Pop-Location }

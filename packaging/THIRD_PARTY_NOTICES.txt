@@ -1,19 +1,31 @@
 H5 Viewer third-party software notices
-======================================
+=====================================
 
-The Windows distribution contains the Python interpreter and third-party Python
-packages. Full license texts copied from the installed distributions are in the
-licenses directory beside this file.
+H5 Viewer itself is licensed under MIT; see LICENSE. The Windows bundle uses
+unmodified Qt / PySide6 / Shiboken6 under LGPL version 3. Full LGPL v3 and GPL v3
+texts and copyright notices are in licenses/{qtbase,qtsvg,qtimageformats,pyside-setup}.
+The corresponding version-matched source archives accompany the release.
+See SOURCE_REBUILD.md and source-binary-map.json for checksums and replacement.
 
-Python                         Python Software Foundation License
-NumPy                          BSD 3-Clause License
-h5py                           BSD 3-Clause License
-HDF5                           HDF5 License (BSD-style)
-LZF filter bundled by h5py     BSD 2-Clause License
-zlib/DEFLATE support           zlib License
-PySide6 / Shiboken6 / Qt       LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
-pyqtgraph                      MIT License
-PyInstaller runtime            GPL-2.0-or-later with Bootloader Exception
+Qt source notice trees preserve upstream qt_attribution.json, their referenced
+LicenseFile texts, and SPDX license texts. They deliberately include a superset
+of each source module's notices, including code not in the Windows build.
+The presence of a notice is not a claim that its component is shipped.
+Qt Virtual Keyboard, PDF, QML and Quick are excluded from this distribution.
+This software is based in part on the work of the Independent JPEG Group.
 
-H5 Viewer is distributed independently of these projects. Project names and
-licenses are provided for attribution and do not imply endorsement.
+licenses/PYTHON-LICENSE.txt: full Python license, including bundled components
+and Microsoft redistribution terms.
+licenses/numpy: NumPy BSD license and bundled OpenBLAS / LAPACK notices.
+licenses/h5py: h5py BSD license and bundled LZF notices.
+licenses/HDF5-LICENSE.txt: HDF5 BSD-style license.
+licenses/ZLIB-LICENSE.txt: zlib license.
+licenses/pyqtgraph: MIT license and CET colormap Creative Commons BY 4.0 terms
+and attribution as supplied by the installed package (Peter Kovesi / CET).
+licenses/pyinstaller: GPL license with the PyInstaller bootloader exception.
+licenses/colorama (when bundled): Colorama BSD license.
+licenses/MESA-LLVM-LICENSE.txt: Qt's Mesa llvmpipe software OpenGL / LLVM notices
+for opengl32sw.dll.
+
+Versions and the actual binary inventory are in source-binary-map.json. No
+third-party project endorses H5 Viewer. These notices preserve upstream terms.

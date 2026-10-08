@@ -7,7 +7,10 @@ import json
 import multiprocessing
 import os
 import sys
+import time
 from pathlib import Path
+
+from h5_viewer import __version__
 
 
 def _check(filename: str, report: str) -> int:
@@ -21,19 +24,31 @@ def _check(filename: str, report: str) -> int:
     ):
         raise ValueError("Diagnostic report cannot overwrite the source file")
     destination.parent.mkdir(parents=True, exist_ok=True)
-    import numpy as np
-    from PySide6.QtWidgets import QApplication
-
-    from h5_viewer.process import ReaderClient
-
-    app = QApplication.instance() or QApplication([sys.argv[0]])
-    app.setApplicationName("H5 Viewer")
     result = {"filename": str(Path(filename).resolve()), "ok": False}
     client = None
+    deadline = time.monotonic() + 90
+    candidates = {}
     try:
+        import numpy as np
+        from PySide6.QtWidgets import QApplication
+
+        from h5_viewer.diagnostics import exercise_gui
+        from h5_viewer.process import ReaderClient
+
+        app = QApplication.instance() or QApplication([sys.argv[0]])
+        app.setApplicationName("H5 Viewer")
+        app.setApplicationVersion(__version__)
+        result["application_version"] = app.applicationVersion()
         client = ReaderClient(filename)
-        result["root"] = client.request({"op": "describe", "path": "/"})
-        result["children"] = client.request({"op": "children", "path": "/", "limit": 30})
+
+        def request(command):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError("Diagnostic deadline exceeded")
+            return client.request(command, timeout=min(30, remaining))
+
+        result["root"] = request({"op": "describe", "path": "/"})
+        result["children"] = request({"op": "children", "path": "/", "limit": 30})
         pending = list(result["children"]["items"])
         result["reads"] = []
         visits = 0
@@ -44,7 +59,7 @@ def _check(filename: str, report: str) -> int:
                 continue
             if item.get("kind") == "group" and item.get("expandable", True):
                 pending.extend(
-                    client.request({"op": "children", "path": item["path"], "limit": 30})["items"]
+                    request({"op": "children", "path": item["path"], "limit": 30})["items"]
                 )
             elif item.get("kind") == "dataset":
                 shape = item.get("shape")
@@ -53,8 +68,13 @@ def _check(filename: str, report: str) -> int:
                 selection = [0] * len(shape)
                 if selection:
                     selection[-1] = [0, min(shape[-1], 16), 1]
-                block = client.request({"op": "read", "path": item["path"], "selection": selection})
+                block = request({"op": "read", "path": item["path"], "selection": selection})
                 array = np.asarray(block["array"])
+                candidates.setdefault("table", item)
+                if array.dtype.kind in "buifc" and shape:
+                    candidates.setdefault("plot", item)
+                    if len(shape) >= 2:
+                        candidates.setdefault("image", item)
                 result["reads"].append(
                     {
                         "path": item["path"],
@@ -65,6 +85,9 @@ def _check(filename: str, report: str) -> int:
                 )
         result["reader"] = client.status
         result["qt_platform"] = app.platformName()
+        client.close()
+        result["gui"] = {}
+        exercise_gui(app, str(source), candidates, result["gui"], deadline)
         result["ok"] = True
     except Exception as exc:  # noqa: BLE001 - diagnostic boundary must persist reader errors
         result["error"] = f"{type(exc).__name__}: {exc}"
@@ -100,7 +123,7 @@ def main(argv: list[str] | None = None) -> int:
     app = QApplication.instance() or QApplication([sys.argv[0]])
     app.setOrganizationName("H5Viewer")
     app.setApplicationName("H5 Viewer")
-    app.setApplicationVersion("0.1.0")
+    app.setApplicationVersion(__version__)
     windows = []
     for filename in args.files or [None]:
         window = MainWindow(filename)

@@ -2,8 +2,12 @@
 """PyInstaller onedir specification for the Windows portable distribution."""
 
 from pathlib import Path
+import sys
 
 project_root = Path(SPECPATH).parent
+sys.path.insert(0, str(project_root / "packaging"))
+from bundle_policy import include_qt_entry
+
 entrypoint = project_root / "packaging" / "entrypoint.py"
 
 analysis = Analysis(
@@ -60,6 +64,10 @@ analysis = Analysis(
     noarchive=False,
     optimize=1,
 )
+
+# Hooks can collect plugins and their DLLs despite Python module exclusions.
+analysis.binaries = [entry for entry in analysis.binaries if include_qt_entry(entry[0])]
+analysis.datas = [entry for entry in analysis.datas if include_qt_entry(entry[0])]
 
 python_archive = PYZ(analysis.pure)
 

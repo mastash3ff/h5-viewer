@@ -1,0 +1,28 @@
+name: Bug report
+description: Report a reproducible problem with H5 Viewer.
+body:
+  - type: input
+    id: version
+    attributes:
+      label: H5 Viewer version
+      description: Include the release version or commit and portable, installed, or source usage.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Operating system
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps and synthetic reproducer
+      description: Include expected and observed behavior. Use generated data; do not upload private datasets, credentials, or unredacted paths.
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Relevant diagnostic output
+      description: Review and redact local paths before sharing.

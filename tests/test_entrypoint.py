@@ -21,3 +21,13 @@ def test_diagnostic_report_cannot_overwrite_source(tmp_path):
     with pytest.raises(ValueError, match="overwrite"):
         _check(str(source), str(source))
     assert source.read_bytes() == b"preserve these bytes"
+
+
+def test_diagnostic_report_cannot_overwrite_source_through_hardlink(tmp_path):
+    source = tmp_path / "source.h5"
+    source.write_bytes(b"preserve these bytes")
+    report = tmp_path / "report.json"
+    report.hardlink_to(source)
+    with pytest.raises(ValueError, match="overwrite"):
+        _check(str(source), str(report))
+    assert source.read_bytes() == b"preserve these bytes"

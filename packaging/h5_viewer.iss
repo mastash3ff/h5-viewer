@@ -45,6 +45,10 @@ Type: files; Name: "{app}\USER_GUIDE.md"
 Type: files; Name: "{app}\THIRD_PARTY_NOTICES.txt"
 Type: filesandordirs; Name: "{app}\_internal"
 Type: filesandordirs; Name: "{app}\licenses"
+Type: filesandordirs; Name: "{app}\docs"
+Type: files; Name: "{app}\LICENSE"
+Type: files; Name: "{app}\SOURCE_REBUILD.md"
+Type: files; Name: "{app}\source-binary-map.json"
 
 [Icons]
 Name: "{userprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"
