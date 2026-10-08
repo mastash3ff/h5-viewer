@@ -3,6 +3,7 @@
 
 from pathlib import Path
 import sys
+import PyInstaller
 
 project_root = Path(SPECPATH).parent
 sys.path.insert(0, str(project_root / "packaging"))
@@ -18,7 +19,12 @@ analysis = Analysis(
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=[],
+    # Custom hooks run before automatic Qt hooks. Apply the installed PyInstaller
+    # multiprocessing shim first, then divert workers before QtCore is imported.
+    runtime_hooks=[
+        str(Path(PyInstaller.__file__).parent / "hooks/rthooks/pyi_rth_multiprocessing.py"),
+        str(project_root / "packaging/early_multiprocessing.py"),
+    ],
     excludes=[
         "PySide6.Qt3DAnimation",
         "PySide6.Qt3DCore",

@@ -42,3 +42,35 @@ def test_installer_uninstall_only_deletes_owned_or_named_registration() -> None:
                 or "Software\\Classes\\Applications\\{#MyAppExeName}" in line
                 or "Software\\Classes\\H5Viewer." in line
             )
+
+
+def test_early_runtime_hook_diverts_frozen_worker_before_qt(monkeypatch) -> None:
+    import multiprocessing
+    import multiprocessing.spawn
+    import runpy
+    import sys
+
+    import PyInstaller
+    import pytest
+
+    hook = Path(PyInstaller.__file__).parent / "hooks/rthooks/pyi_rth_multiprocessing.py"
+    original_freeze = multiprocessing.freeze_support
+    original_spawn_freeze = multiprocessing.spawn.freeze_support
+    original_directory = multiprocessing.process.ORIGINAL_DIR
+    calls = []
+    monkeypatch.setattr(
+        sys, "argv", ["H5Viewer.exe", "--multiprocessing-fork", "parent_pid=42", "pipe_handle=99"]
+    )
+    monkeypatch.setattr(multiprocessing.spawn, "spawn_main", lambda **kwargs: calls.append(kwargs))
+    try:
+        runpy.run_path(str(hook))
+        with pytest.raises(SystemExit):
+            runpy.run_path(str(ROOT / "packaging/early_multiprocessing.py"))
+        assert calls == [{"parent_pid": 42, "pipe_handle": 99}]
+        monkeypatch.setattr(sys, "argv", ["H5Viewer.exe", "--check"])
+        runpy.run_path(str(ROOT / "packaging/early_multiprocessing.py"))
+        assert calls == [{"parent_pid": 42, "pipe_handle": 99}]
+    finally:
+        multiprocessing.freeze_support = original_freeze
+        multiprocessing.spawn.freeze_support = original_spawn_freeze
+        multiprocessing.process.ORIGINAL_DIR = original_directory
